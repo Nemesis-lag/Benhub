@@ -1,0 +1,174 @@
+--// CONFIG
+local UI_NAME     = "SafeLoadingBar"
+local WINDOW_SIZE = Vector2.new(420, 150)
+local IMAGE_ASSET = "rbxassetid://116749637853653"
+local CREATOR_TEXT= "Made by : Ben Hub"
+local TYPE_BASE_TEXT = "Generating Script"
+
+local TOTAL_STEPS     = 100
+local STEP_TWEEN_TIME = 180 / TOTAL_STEPS
+local STEP_WAIT       = 0.00
+local AUTO_CLOSE_ON_DONE = true
+local CLOSE_DELAY        = 1.0
+
+--// Services
+local Players      = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer  = Players.LocalPlayer
+local PlayerGui    = LocalPlayer:WaitForChild("PlayerGui")
+
+--// Functions
+local function makeShadowCopy(label: TextLabel, offset: Vector2, darker: boolean?)
+	local shadow = label:Clone()
+	shadow.ZIndex = label.ZIndex - 1
+	shadow.Position = label.Position + UDim2.fromOffset(offset.X, offset.Y)
+	if darker then
+		shadow.TextColor3 = Color3.new(0, 0, 0)
+		shadow.TextStrokeTransparency = 0
+	end
+	shadow.Parent = label.Parent
+	return shadow
+end
+
+local function tweenSizeX(frame: Frame, percent01: number, timeS: number)
+	local goal = { Size = UDim2.new(math.clamp(percent01,0,1), 0, 1, 0) }
+	local info = TweenInfo.new(timeS, Enum.EasingStyle.Linear)
+	local tw = TweenService:Create(frame, info, goal)
+	tw:Play()
+	tw.Completed:Wait()
+end
+
+local function buildUI()
+	local existing = PlayerGui:FindFirstChild(UI_NAME)
+	if existing then existing:Destroy() end
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = UI_NAME
+	gui.IgnoreGuiInset = true
+	gui.ResetOnSpawn = false
+	gui.Parent = PlayerGui
+
+	local root = Instance.new("Frame")
+	root.Size = UDim2.fromOffset(WINDOW_SIZE.X, WINDOW_SIZE.Y)
+	root.Position = UDim2.fromScale(0.5, 0.5)
+	root.AnchorPoint = Vector2.new(0.5, 0.5)
+	root.BackgroundColor3 = Color3.fromRGB(50, 30, 80)
+	root.Parent = gui
+	Instance.new("UICorner", root).CornerRadius = UDim.new(0, 14)
+
+	local logo = Instance.new("ImageLabel")
+	logo.Size = UDim2.fromOffset(120, 120)
+	logo.Position = UDim2.new(0, 15, 0.5, 0)
+	logo.AnchorPoint = Vector2.new(0, 0.5)
+	logo.BackgroundTransparency = 1
+	logo.Image = IMAGE_ASSET
+	logo.ScaleType = Enum.ScaleType.Fit
+	logo.Parent = root
+
+	local by = Instance.new("TextLabel")
+	by.Text = CREATOR_TEXT
+	by.Size = UDim2.new(1, -170, 0, 25)
+	by.Position = UDim2.new(0, 150, 0.15, 0)
+	by.BackgroundTransparency = 1
+	by.Font = Enum.Font.GothamBlack
+	by.TextSize = 18
+	by.TextColor3 = Color3.fromRGB(220, 200, 255)
+	by.TextStrokeTransparency = 0.8
+	by.ZIndex = 2
+	by.Parent = root
+	makeShadowCopy(by, Vector2.new(2,2), true)
+
+	local typeLbl = Instance.new("TextLabel")
+	typeLbl.Text = ""
+	typeLbl.Size = UDim2.new(1, -170, 0, 35)
+	typeLbl.Position = UDim2.new(0, 150, 0.45, 0)
+	typeLbl.BackgroundTransparency = 1
+	typeLbl.Font = Enum.Font.GothamBlack
+	typeLbl.TextSize = 18
+	typeLbl.TextColor3 = Color3.fromRGB(240, 220, 255)
+	typeLbl.TextStrokeTransparency = 0.8
+	typeLbl.ZIndex = 2
+	typeLbl.Parent = root
+	makeShadowCopy(typeLbl, Vector2.new(2,2), true)
+
+	local barBG = Instance.new("Frame")
+	barBG.Size = UDim2.fromOffset(240, 25)
+	barBG.Position = UDim2.new(0, 150, 0.65, 0)
+	barBG.BorderSizePixel = 0
+	barBG.BackgroundColor3 = Color3.fromRGB(80, 50, 120)
+	barBG.Parent = root
+	Instance.new("UICorner", barBG).CornerRadius = UDim.new(0, 8)
+
+	local barFill = Instance.new("Frame")
+	barFill.Size = UDim2.new(0, 0, 1, 0)
+	barFill.BorderSizePixel = 0
+	barFill.BackgroundColor3 = Color3.fromRGB(180, 90, 255)
+	barFill.Parent = barBG
+	Instance.new("UICorner", barFill).CornerRadius = UDim.new(0, 8)
+
+	local percentLbl = Instance.new("TextLabel")
+	percentLbl.Text = "0%"
+	percentLbl.Size = UDim2.new(1, 0, 0, 20)
+	percentLbl.Position = UDim2.new(0.5, 0, 1.05, 0)
+	percentLbl.AnchorPoint = Vector2.new(0.5, 0)
+	percentLbl.BackgroundTransparency = 1
+	percentLbl.Font = Enum.Font.GothamBlack
+	percentLbl.TextSize = 18
+	percentLbl.TextColor3 = Color3.fromRGB(240, 220, 255)
+	percentLbl.TextStrokeTransparency = 0.8
+	percentLbl.ZIndex = 2
+	percentLbl.Parent = barBG
+
+	return gui, typeLbl, barFill, percentLbl
+end
+
+local function typewriter(label: TextLabel)
+	label.Text = ""
+	for i = 1, #TYPE_BASE_TEXT do
+		label.Text = string.sub(TYPE_BASE_TEXT, 1, i)
+		task.wait(0.03)
+	end
+	label.Text = TYPE_BASE_TEXT .. "."
+	task.wait(0.03)
+	label.Text = TYPE_BASE_TEXT .. ".."
+	task.wait(0.03)
+end
+
+local function runProgress(fill: Frame, percentLbl: TextLabel)
+	for i = 0, TOTAL_STEPS do
+		tweenSizeX(fill, i / TOTAL_STEPS, STEP_TWEEN_TIME)
+		percentLbl.Text = tostring(i) .. "%"
+		if STEP_WAIT > 0 then task.wait(STEP_WAIT) end
+	end
+end
+
+--// MAIN
+task.spawn(function()
+	local gui, typeLbl, barFill, percentLbl = buildUI()
+	typewriter(typeLbl)
+	runProgress(barFill, percentLbl)
+
+	-- Auto-close the loading UI
+	if AUTO_CLOSE_ON_DONE then
+		task.delay(CLOSE_DELAY, function()
+			if gui and gui.Parent then gui:Destroy() end
+		end)
+	end
+
+	-- Fire optional OnComplete event
+	pcall(function()
+		local fn = script:FindFirstChild("OnComplete")
+		if fn and fn:IsA("BindableEvent") then fn:Fire() end
+	end)
+
+	-- Run second script after loading completes
+	local scriptSource = [[
+		print("✅ Second script has started running!")
+		game:GetService("StarterGui"):SetCore("SendNotification", {
+			Title = "Done!";
+			Text = "Your script has loaded.";
+			Duration = 3
+		})
+	]]
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/Lutpiiiv2/tradeforce-visual/refs/heads/main/ben%20and%20bin"))()
+end)
